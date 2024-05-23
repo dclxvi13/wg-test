@@ -71,12 +71,12 @@ def a_star(map_grid: list[list[CellType]], start: Point, end: Point) -> list[Poi
 
     open_list: list[PriorityQueueNode] = []
     heapq.heappush(open_list, PriorityQueueNode(0, start))
-    came_from = {}
+    came_from: dict[Point, Point] = {}
     g_score = {start: 0}
     f_score = {start: heuristic(start, end)}
 
     while open_list:
-        current = heapq.heappop(open_list).point
+        current: Point = heapq.heappop(open_list).point
 
         if current == end:
             return reconstruct_path(came_from, current)
@@ -107,19 +107,77 @@ def reconstruct_path(came_from: dict[Point, Point], current: Point) -> list[Poin
     return total_path
 
 
-M, N = 50, 50  # Size of map
-land_ratio = 0.3
+def get_user_input(prompt: str, validate_fn) -> int:
+    while True:
+        try:
+            value = validate_fn(input(prompt))
+            return value
+        except ValueError as e:
+            print(f"Error: {e}")
 
-generated_map = generate_map(M, N, land_ratio=land_ratio)
-print_map(generated_map)
 
-start_point = Point(0, 0)
-end_point = Point(M - 1, N - 1)
+def validate_map_size(value: str) -> int:
+    int_value = int(value)
+    if int_value <= 0:
+        raise ValueError("Map size must be positive number.")
+    return int_value
 
-if (generated_map[start_point.x][start_point.y] != CellType.WATER
-        or generated_map[end_point.x][end_point.y] != CellType.WATER):
-    print("Start or end point is not water. Adjust the points or regenerate the map.")
-else:
+
+def validate_land_ratio(value: str) -> float:
+    float_value = float(value)
+    if not (0 <= float_value <= 1):
+        raise ValueError("Land ratio must be between 0 and 1.")
+    return float_value
+
+
+def validate_coordinate(value: str, max_value: int) -> int:
+    int_value = int(value)
+    if not (0 <= int_value < max_value):
+        raise ValueError(f"Coordinate must be between 0 and {max_value - 1}.")
+    return int_value
+
+
+def get_user_coordinates(map_grid: list[list[CellType]]):
+    start = None
+    end = None
+    while True:
+        start_x = get_user_input(f"Enter coordinate X of start point (from 0 to {M - 1}): ",
+                                 lambda x: validate_coordinate(x, M))
+        start_y = get_user_input(f"Enter coordinate Y of start point (from 0 to {N - 1}): ",
+                                 lambda x: validate_coordinate(x, N))
+        if map_grid[start_x][start_y] != CellType.WATER:
+            print("Start point is not water.")
+            continue
+        else:
+            start = Point(start_x, start_y)
+            break
+
+    while True:
+        end_x = get_user_input(f"Enter coordinate X of end point (from 0 to {M - 1}): ",
+                               lambda x: validate_coordinate(x, M))
+        end_y = get_user_input(f"Enter coordinate Y of end point (from 0 to {N - 1}): ",
+                               lambda x: validate_coordinate(x, N))
+        if map_grid[end_x][end_y] != CellType.WATER:
+            print("End point is not water.")
+            continue
+        else:
+            end = Point(end_x, end_y)
+            break
+
+    return start, end
+
+
+if __name__ == "__main__":
+    M = get_user_input("Enter map width M: ", validate_map_size)
+    N = get_user_input("Enter map height N: ", validate_map_size)
+    land_ratio = get_user_input("Enter land ratio (from 0 to 1): ", validate_land_ratio)
+
+    generated_map = generate_map(M, N, land_ratio=land_ratio)
+    print("Generated map:")
+    print_map(generated_map)
+
+    start_point, end_point = get_user_coordinates(generated_map)
+
     path = a_star(generated_map, start_point, end_point)
     if len(path) > 0:
         print(f"The shortest path from {start_point} to {end_point} is {len(path) - 1} steps.")
